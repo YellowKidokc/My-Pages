@@ -1,0 +1,128 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>A Proof of God - Chapter Template</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #1a202c; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    .sidebar { width: 20%; position: fixed; height: 100%; background-color: #2d3748; padding: 1rem; }
+    .content { margin-left: 22%; padding: 2rem; }
+    .section { margin-bottom: 1rem; padding: 1rem; background-color: #4a5568; border-radius: 0.5rem; }
+    .hidden { display: none; }
+    .tag { display: inline-block; margin-right: 0.5rem; padding: 0.2rem 0.5rem; background-color: #4a90e2; border-radius: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="flex">
+    <nav class="sidebar">
+      <h1 class="text-xl font-bold mb-4">My Writings</h1>
+      <ul class="space-y-2">
+        <li><a href="index.html" class="text-blue-300 hover:text-blue-100">Home</a></li>
+        <li><a href="#chapter" class="text-blue-300 hover:text-blue-100">Chapter: [Chapter Title]</a></li>
+        <li class="mt-4"><span class="text-gray-400">Categories</span></li>
+        <li><a href="series_proof_of_god.html" class="text-blue-300 hover:text-blue-100 tag">Proof of God</a></li>
+        <li><a href="series_2.html" class="text-blue-300 hover:text-blue-100 tag">Series 2</a></li>
+        <!-- Add more series -->
+        <li class="mt-4"><span class="text-gray-400">Tags</span></li>
+        <li><span class="tag">Coherence</span></li>
+        <li><span class="tag">Rebel</span></li>
+        <!-- Add more tags -->
+        <li class="mt-4"><a href="archives.html" class="text-blue-300 hover:text-blue-100">Archives</a></li>
+        <li><a href="about.html" class="text-blue-300 hover:text-blue-100">About</a></li>
+      </ul>
+    </nav>
+    <main class="content">
+      <div class="mb-4">
+        <button onclick="showVersion('accessible')" class="bg-blue-600 text-white px-3 py-1 rounded">Everyday</button>
+        <button onclick="showVersion('academic')" class="bg-green-600 text-white px-3 py-1 rounded">Academic</button>
+        <button id="addSection" class="bg-gray-600 text-white px-3 py-1 rounded ml-2">+</button>
+      </div>
+      <div id="chapterContent">
+        <section id="chapter-accessible" class="version">
+          <h2 class="text-2xl font-bold mb-2">Chapter: [Chapter Title]</h2>
+          <div class="section" contenteditable="true">Let’s start with a promise. I won’t ask you to believe anything you don’t already know is true...</div>
+          <div class="section" id="audioPlaceholder">Drop audio file here or click to upload (e.g., note_-_Sep_17_2025_14-58.mp3)</div>
+          <div class="section" id="imagePlaceholder">Drop image here or click to upload</div>
+          <div class="section" contenteditable="true">Question: [Your Question Here]</div>
+        </section>
+        <section id="chapter-academic" class="version hidden">
+          <h2 class="text-2xl font-bold mb-2">Chapter: [Chapter Title] - Academic</h2>
+          <div class="section" contenteditable="true">This inquiry seeks to establish a rational basis for theistic conclusions...</div>
+          <div class="section" id="audioPlaceholder">Drop audio file here or click to upload</div>
+          <div class="section" id="imagePlaceholder">Drop image here or click to upload</div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script>
+    document.getElementById('addSection').addEventListener('click', () => {
+      const content = document.getElementById('chapterContent');
+      const newSection = document.createElement('div');
+      newSection.className = 'section';
+      newSection.contentEditable = true;
+      newSection.innerHTML = 'New text section - edit me!';
+      content.appendChild(newSection);
+    });
+
+    document.querySelectorAll('[id$="Placeholder"]').forEach(placeholder => {
+      placeholder.addEventListener('dragover', (e) => e.preventDefault());
+      placeholder.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          if (placeholder.id.includes('audio')) {
+            placeholder.innerHTML = `<audio controls src="${URL.createObjectURL(file)}"></audio>`;
+          } else if (placeholder.id.includes('image')) {
+            placeholder.innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Uploaded image" style="max-width: 100%;">`;
+          }
+        }
+      });
+    });
+
+    function showVersion(version) {
+      document.querySelectorAll('.version').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`chapter-${version}`).classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
