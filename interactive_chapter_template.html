@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Webbook Chapter Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body { background-color: #0f172a; color: #e2e8f0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .sidebar { width: 20rem; min-height: 100vh; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); }
+    .content-wrapper { margin-left: 20rem; }
+    .content-block { border: 1px solid rgba(148, 163, 184, 0.2); background-color: rgba(30, 41, 59, 0.65); border-radius: 1rem; padding: 1.5rem; }
+    .content-block + .content-block { margin-top: 1.25rem; }
+    [contenteditable][data-placeholder]:empty::before { content: attr(data-placeholder); color: #94a3b8; }
+    .floating-controls { transition: opacity 0.2s ease, transform 0.2s ease; }
+    .content-block:hover .floating-controls { opacity: 1; transform: translateY(0); }
+    .content-block .floating-controls { opacity: 0; transform: translateY(-0.5rem); }
+    .tag { background: rgba(148, 163, 184, 0.2); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; }
+    .menu-enter { animation: fadeInScale 0.18s ease forwards; }
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: translateY(0.75rem) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .drop-zone { border: 2px dashed rgba(148, 163, 184, 0.4); border-radius: 0.75rem; padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s ease, background-color 0.2s ease; }
+    .drop-zone:hover { border-color: #38bdf8; background-color: rgba(56, 189, 248, 0.08); }
+    audio, img { width: 100%; border-radius: 0.75rem; }
+    .markdown-preview { border-top: 1px solid rgba(148, 163, 184, 0.15); margin-top: 1rem; padding-top: 1rem; }
+    .floating-add { position: fixed; bottom: 2rem; right: 2rem; background: linear-gradient(120deg, #38bdf8, #6366f1); box-shadow: 0 15px 40px rgba(14, 116, 144, 0.25); }
+    .floating-add:hover { box-shadow: 0 20px 55px rgba(79, 70, 229, 0.35); }
+    .inactive-block { opacity: 0.4; filter: grayscale(0.2); transition: opacity 0.2s ease, filter 0.2s ease; }
+  </style>
+</head>
+<body class="bg-slate-950">
+  <div class="flex">
+    <aside class="sidebar px-6 py-8 text-slate-200">
+      <div class="flex items-center gap-3 mb-10">
+        <div class="h-12 w-12 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500"></div>
+        <div>
+          <p class="text-xs uppercase tracking-[0.35em] text-slate-400">Obsidian Webbook</p>
+          <h1 class="text-xl font-semibold text-white">The Proof Project</h1>
+        </div>
+      </div>
+      <div class="space-y-8 text-sm">
+        <section>
+          <p class="uppercase text-xs text-slate-500 mb-3">Navigation</p>
+          <nav class="space-y-2">
+            <a href="#" class="block px-3 py-2 rounded-lg bg-white/5 text-white/90 hover:bg-sky-500/10">Dashboard</a>
+            <a href="#chapter-meta" class="block px-3 py-2 rounded-lg hover:bg-white/5">Current Chapter</a>
+            <a href="#blocks" class="block px-3 py-2 rounded-lg hover:bg-white/5">Blocks</a>
+            <a href="#backlinks" class="block px-3 py-2 rounded-lg hover:bg-white/5">Backlinks</a>
+          </nav>
+        </section>
+        <section>
+          <p class="uppercase text-xs text-slate-500 mb-3">Series</p>
+          <div class="flex flex-wrap gap-2">
+            <span class="tag">Proof of God</span>
+            <span class="tag">Philosophy</span>
+            <span class="tag">Field Notes</span>
+          </div>
+        </section>
+        <section>
+          <p class="uppercase text-xs text-slate-500 mb-3">Cloudflare Pages</p>
+          <p class="text-slate-400 text-xs leading-relaxed">Drop this HTML file in a Pages project or any static host. It keeps all assets inline so deployment stays frictionless.</p>
+        </section>
+      </div>
+    </aside>
+    <main class="content-wrapper flex-1 px-10 py-12">
+      <header id="chapter-meta" class="mb-10">
+        <div class="flex flex-wrap items-start gap-6">
+          <div class="flex-1 min-w-[16rem] space-y-4">
+            <div contenteditable="true" data-placeholder="Chapter Title" class="text-4xl font-semibold tracking-tight text-white"></div>
+            <div contenteditable="true" data-placeholder="Short hook or subtitle" class="text-lg text-slate-400 leading-relaxed"></div>
+            <div class="flex flex-wrap gap-2 text-xs text-slate-300">
+              <span contenteditable="true" data-placeholder="Add a tag" class="px-2 py-1 bg-white/5 rounded-full"></span>
+              <span contenteditable="true" data-placeholder="Add another tag" class="px-2 py-1 bg-white/5 rounded-full"></span>
+            </div>
+          </div>
+          <div class="w-full lg:w-72 space-y-4 bg-white/5 rounded-2xl p-6">
+            <p class="text-xs uppercase tracking-widest text-slate-400">Version toggle</p>
+            <div class="flex gap-2">
+              <button data-version="everyday" class="version-toggle flex-1 px-4 py-2 rounded-xl bg-sky-500/20 text-sky-200">Everyday</button>
+              <button data-version="academic" class="version-toggle flex-1 px-4 py-2 rounded-xl bg-white/5 text-slate-300">Academic</button>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">Switch between audience modes. Blocks can be duplicated between versions.</p>
+            <button id="duplicateEveryday" class="w-full px-4 py-2 text-sm rounded-xl bg-white/10 text-white/80 hover:bg-sky-500/20">Duplicate everyday blocks to academic</button>
+          </div>
+        </div>
+      </header>
+      <section id="blocks" class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-semibold text-white">Content blocks</h2>
+          <div class="flex gap-2">
+            <button id="exportJson" class="px-4 py-2 text-sm rounded-xl bg-white/10 text-slate-200 hover:bg-sky-500/20">Export structure</button>
+            <button id="clearAll" class="px-4 py-2 text-sm rounded-xl bg-red-500/10 text-red-200 hover:bg-red-500/20">Clear</button>
+          </div>
+        </div>
+        <p class="text-sm text-slate-400">Build the chapter by stacking sections. Use the + button to add narrative, media, quotes, or markdown directly from your Obsidian notes.</p>
+        <div id="blockContainer" class="space-y-5"></div>
+      </section>
+      <section id="backlinks" class="mt-16">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold text-white">Backlinks</h2>
+          <button id="addBacklink" class="px-3 py-2 text-xs rounded-lg bg-white/10 text-slate-200 hover:bg-sky-500/20">+ Link</button>
+        </div>
+        <ul id="backlinkList" class="space-y-3"></ul>
+      </section>
+    </main>
+  </div>
+
+  <button id="addBlock" class="floating-add text-white rounded-full px-5 py-3 flex items-center gap-2">
+    <span class="text-2xl leading-none">＋</span>
+    <span class="text-sm font-semibold tracking-wide uppercase">Add block</span>
+  </button>
+
+  <div id="blockMenu" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30">
+    <div class="bg-slate-900/95 border border-white/10 rounded-2xl p-6 w-full max-w-3xl shadow-2xl menu-enter">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <p class="text-xs uppercase tracking-[0.4em] text-slate-500">New block</p>
+          <h3 class="text-xl font-semibold text-white">What would you like to add?</h3>
+        </div>
+        <button id="closeMenu" class="h-10 w-10 flex items-center justify-center rounded-full bg-white/5 text-slate-300 hover:bg-white/10">✕</button>
+      </div>
+      <div class="grid gap-4 md:grid-cols-2">
+        <button class="block-type" data-type="text">
+          <div class="h-full w-full text-left rounded-xl bg-white/5 hover:bg-sky-500/15 transition-all p-5">
+            <p class="text-sm font-semibold text-white mb-1">Narrative text</p>
+            <p class="text-xs text-slate-400">Editable prose block for primary storytelling.</p>
+          </div>
+        </button>
+        <button class="block-type" data-type="markdown">
+          <div class="h-full w-full text-left rounded-xl bg-white/5 hover:bg-sky-500/15 transition-all p-5">
+            <p class="text-sm font-semibold text-white mb-1">Markdown import</p>
+            <p class="text-xs text-slate-400">Paste Obsidian Markdown and preview instantly.</p>
+          </div>
+        </button>
+        <button class="block-type" data-type="image">
+          <div class="h-full w-full text-left rounded-xl bg-white/5 hover:bg-sky-500/15 transition-all p-5">
+            <p class="text-sm font-semibold text-white mb-1">Image</p>
+            <p class="text-xs text-slate-400">Upload cover art, diagrams, or photographs.</p>
+          </div>
+        </button>
+        <button class="block-type" data-type="audio">
+          <div class="h-full w-full text-left rounded-xl bg-white/5 hover:bg-sky-500/15 transition-all p-5">
+            <p class="text-sm font-semibold text-white mb-1">Audio narration</p>
+            <p class="text-xs text-slate-400">Attach spoken-word tracks or ambient sound.</p>
+          </div>
+        </button>
+        <button class="block-type" data-type="quote">
+          <div class="h-full w-full text-left rounded-xl bg-white/5 hover:bg-sky-500/15 transition-all p-5">
+            <p class="text-sm font-semibold text-white mb-1">Pull quote</p>
+            <p class="text-xs text-slate-400">Highlight essential lines or sourced citations.</p>
+          </div>
+        </button>
+        <button class="block-type" data-type="embed">
+          <div class="h-full w-full text-left rounded-xl bg-white/5 hover:bg-sky-500/15 transition-all p-5">
+            <p class="text-sm font-semibold text-white mb-1">Link embed</p>
+            <p class="text-xs text-slate-400">Drop videos, gists, or interactive widgets.</p>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <template id="backlinkTemplate">
+    <li class="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3">
+      <input type="text" placeholder="Backlinked note title" class="flex-1 bg-transparent focus:outline-none text-slate-100 placeholder:text-slate-500">
+      <input type="url" placeholder="https://" class="flex-1 bg-transparent focus:outline-none text-slate-100 placeholder:text-slate-500">
+      <button class="remove-backlink text-xs text-red-300 hover:text-red-200">Remove</button>
+    </li>
+  </template>
+
+  <script>
+    const blockContainer = document.getElementById('blockContainer');
+    const addBlockBtn = document.getElementById('addBlock');
+    const blockMenu = document.getElementById('blockMenu');
+    const closeMenuBtn = document.getElementById('closeMenu');
+    const exportBtn = document.getElementById('exportJson');
+    const clearBtn = document.getElementById('clearAll');
+    const backlinkList = document.getElementById('backlinkList');
+    const backlinkTemplate = document.getElementById('backlinkTemplate');
+
+    const state = {
+      activeVersion: 'everyday'
+    };
+
+    function refreshVersionStyles() {
+      Array.from(blockContainer.children).forEach(block => {
+        if (!block.dataset.version || block.dataset.version === state.activeVersion) {
+          block.classList.remove('inactive-block');
+        } else {
+          block.classList.add('inactive-block');
+        }
+        updateBadge(block);
+      });
+    }
+
+    function openMenu() {
+      blockMenu.classList.remove('hidden');
+    }
+
+    function closeMenu() {
+      blockMenu.classList.add('hidden');
+    }
+
+    function updateBadge(block) {
+      const badge = block.querySelector('span');
+      if (badge) {
+        const typeLabel = (block.dataset.type || '').toUpperCase();
+        const versionLabel = (block.dataset.version || '').toUpperCase();
+        badge.textContent = versionLabel ? `${typeLabel} · ${versionLabel}` : typeLabel;
+      }
+    }
+
+    function createControls(block) {
+      block.querySelectorAll('.floating-controls').forEach(ctrl => ctrl.remove());
+      const controls = document.createElement('div');
+      controls.className = 'floating-controls absolute -top-4 right-4 flex gap-2 text-xs text-slate-300';
+      controls.innerHTML = `
+        <button class="move-up px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">↑</button>
+        <button class="move-down px-3 py-1 rounded-full bg-white/10 hover:bg-white/20">↓</button>
+        <button class="duplicate px-3 py-1 rounded-full bg-sky-500/20 text-sky-100 hover:bg-sky-500/30">⧉</button>
+        <button class="remove px-3 py-1 rounded-full bg-red-500/20 text-red-100 hover:bg-red-500/30">✕</button>
+      `;
+      controls.querySelector('.remove').addEventListener('click', () => block.remove());
+      controls.querySelector('.move-up').addEventListener('click', () => {
+        const previous = block.previousElementSibling;
+        if (previous) blockContainer.insertBefore(block, previous);
+      });
+      controls.querySelector('.move-down').addEventListener('click', () => {
+        const next = block.nextElementSibling;
+        if (next) blockContainer.insertBefore(next, block);
+      });
+      controls.querySelector('.duplicate').addEventListener('click', () => {
+        const clone = block.cloneNode(true);
+        clone.dataset.version = block.dataset.version;
+        clone.querySelectorAll('.floating-controls').forEach(ctrl => ctrl.remove());
+        setupBlock(clone.dataset.type, clone);
+        updateBadge(clone);
+        createControls(clone);
+        blockContainer.insertBefore(clone, block.nextElementSibling);
+        refreshVersionStyles();
+      });
+      block.appendChild(controls);
+    }
+
+    function createBlock(type) {
+      const block = document.createElement('article');
+      block.className = 'content-block relative';
+      block.dataset.type = type;
+      block.dataset.version = state.activeVersion;
+
+      const badge = document.createElement('span');
+      badge.className = 'absolute -top-4 left-4 text-xs uppercase tracking-[0.3em] text-slate-500';
+      block.appendChild(badge);
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'space-y-4';
+      block.appendChild(wrapper);
+
+      setupBlock(type, block, wrapper);
+      createControls(block);
+      blockContainer.appendChild(block);
+      refreshVersionStyles();
+    }
+
+    function setupBlock(type, block, wrapper = block.querySelector('div')) {
+      wrapper.innerHTML = '';
+      switch (type) {
+        case 'text': {
+          const editable = document.createElement('div');
+          editable.contentEditable = true;
+          editable.dataset.placeholder = 'Start writing…';
+          editable.className = 'leading-7 text-[1.02rem] text-slate-100';
+          wrapper.appendChild(editable);
+          break;
+        }
+        case 'markdown': {
+          const textarea = document.createElement('textarea');
+          textarea.className = 'w-full bg-slate-900/60 border border-white/10 rounded-xl p-4 text-sm text-slate-200 focus:outline-none focus:ring focus:ring-sky-500/30';
+          textarea.rows = 6;
+          textarea.placeholder = '# Paste Markdown from Obsidian';
+
+          const preview = document.createElement('div');
+          preview.className = 'markdown-preview prose prose-invert max-w-none';
+
+          textarea.addEventListener('input', () => {
+            preview.innerHTML = textarea.value.trim() ? marked.parse(textarea.value) : '<p class="text-slate-500 text-sm">Live preview…</p>';
+          });
+          textarea.dispatchEvent(new Event('input'));
+
+          wrapper.appendChild(textarea);
+          wrapper.appendChild(preview);
+          break;
+        }
+        case 'image': {
+          const drop = document.createElement('div');
+          drop.className = 'drop-zone text-slate-300 text-sm';
+          drop.innerHTML = '<p class="font-medium text-slate-200 mb-2">Drop an image or click to upload</p><p class="text-xs text-slate-500">PNG, JPG, GIF. Rendered edge-to-edge.</p>';
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.className = 'hidden';
+
+          const preview = document.createElement('div');
+
+          function handleFile(file) {
+            if (!file) return;
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.onload = () => URL.revokeObjectURL(img.src);
+            preview.innerHTML = '';
+            preview.appendChild(img);
+          }
+
+          drop.addEventListener('click', () => input.click());
+          drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('ring-2', 'ring-sky-400/60'); });
+          drop.addEventListener('dragleave', () => drop.classList.remove('ring-2', 'ring-sky-400/60'));
+          drop.addEventListener('drop', (e) => {
+            e.preventDefault();
+            drop.classList.remove('ring-2', 'ring-sky-400/60');
+            handleFile(e.dataTransfer.files[0]);
+          });
+          input.addEventListener('change', () => handleFile(input.files[0]));
+
+          wrapper.appendChild(drop);
+          wrapper.appendChild(input);
+          wrapper.appendChild(preview);
+          break;
+        }
+        case 'audio': {
+          const drop = document.createElement('div');
+          drop.className = 'drop-zone text-slate-300 text-sm';
+          drop.innerHTML = '<p class="font-medium text-slate-200 mb-2">Drop an audio file or click to upload</p><p class="text-xs text-slate-500">MP3, WAV, or M4A recommended.</p>';
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'audio/*';
+          input.className = 'hidden';
+
+          const preview = document.createElement('div');
+
+          function handleFile(file) {
+            if (!file) return;
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.src = URL.createObjectURL(file);
+            audio.onloadeddata = () => URL.revokeObjectURL(audio.src);
+            preview.innerHTML = '';
+            preview.appendChild(audio);
+          }
+
+          drop.addEventListener('click', () => input.click());
+          drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('ring-2', 'ring-sky-400/60'); });
+          drop.addEventListener('dragleave', () => drop.classList.remove('ring-2', 'ring-sky-400/60'));
+          drop.addEventListener('drop', (e) => {
+            e.preventDefault();
+            drop.classList.remove('ring-2', 'ring-sky-400/60');
+            handleFile(e.dataTransfer.files[0]);
+          });
+          input.addEventListener('change', () => handleFile(input.files[0]));
+
+          wrapper.appendChild(drop);
+          wrapper.appendChild(input);
+          wrapper.appendChild(preview);
+          break;
+        }
+        case 'quote': {
+          const quote = document.createElement('blockquote');
+          quote.contentEditable = true;
+          quote.dataset.placeholder = '“Pull a luminous line worth repeating.”';
+          quote.className = 'text-xl leading-relaxed text-sky-200 italic border-l-4 border-sky-500/40 pl-4';
+          const cite = document.createElement('div');
+          cite.contentEditable = true;
+          cite.dataset.placeholder = '— Source or notebook reference';
+          cite.className = 'text-sm text-slate-400 pt-3';
+          wrapper.appendChild(quote);
+          wrapper.appendChild(cite);
+          break;
+        }
+        case 'embed': {
+          const input = document.createElement('input');
+          input.type = 'url';
+          input.placeholder = 'https://link-to-embed';
+          input.className = 'w-full bg-slate-900/60 border border-white/10 rounded-xl p-4 text-sm text-slate-200 focus:outline-none focus:ring focus:ring-sky-500/30';
+          const frame = document.createElement('div');
+          frame.className = 'rounded-xl overflow-hidden border border-white/10 hidden';
+          input.addEventListener('change', () => {
+            frame.innerHTML = '';
+            if (!input.value) {
+              frame.classList.add('hidden');
+              return;
+            }
+            const iframe = document.createElement('iframe');
+            iframe.src = input.value;
+            iframe.className = 'w-full h-64';
+            iframe.loading = 'lazy';
+            frame.appendChild(iframe);
+            frame.classList.remove('hidden');
+          });
+          wrapper.appendChild(input);
+          wrapper.appendChild(frame);
+          break;
+        }
+      }
+    }
+
+    addBlockBtn.addEventListener('click', openMenu);
+    closeMenuBtn.addEventListener('click', closeMenu);
+    blockMenu.addEventListener('click', (event) => {
+      if (event.target === blockMenu) closeMenu();
+    });
+
+    document.querySelectorAll('.block-type').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.type;
+        createBlock(type);
+        closeMenu();
+      });
+    });
+
+    exportBtn.addEventListener('click', () => {
+      const data = Array.from(blockContainer.children).map(block => {
+        return {
+          type: block.dataset.type,
+          version: block.dataset.version || state.activeVersion,
+          html: block.querySelector('div').innerHTML
+        };
+      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'chapter-structure.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (confirm('Remove all blocks?')) blockContainer.innerHTML = '';
+    });
+
+    document.getElementById('duplicateEveryday').addEventListener('click', () => {
+      const everydayBlocks = Array.from(blockContainer.children).filter(block => block.dataset.version === 'everyday');
+      everydayBlocks.forEach(block => {
+        const clone = block.cloneNode(true);
+        clone.dataset.version = 'academic';
+        clone.querySelectorAll('.floating-controls').forEach(ctrl => ctrl.remove());
+        setupBlock(clone.dataset.type, clone);
+        updateBadge(clone);
+        createControls(clone);
+        blockContainer.appendChild(clone);
+      });
+      refreshVersionStyles();
+    });
+
+    document.querySelectorAll('.version-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeVersion = btn.dataset.version;
+        document.querySelectorAll('.version-toggle').forEach(b => b.classList.remove('bg-sky-500/20', 'text-sky-200'));
+        btn.classList.add('bg-sky-500/20', 'text-sky-200');
+        refreshVersionStyles();
+      });
+    });
+
+    document.getElementById('addBacklink').addEventListener('click', () => {
+      const item = backlinkTemplate.content.firstElementChild.cloneNode(true);
+      item.querySelector('.remove-backlink').addEventListener('click', () => item.remove());
+      backlinkList.appendChild(item);
+    });
+  </script>
+</body>
+</html>
